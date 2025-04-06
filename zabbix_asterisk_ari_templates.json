@@ -1,0 +1,943 @@
+{
+    "zabbix_export": {
+        "version": "7.0",
+        "template_groups": [
+            {
+                "uuid": "1d12408342854fd5a4436dd6d5d1bd4a",
+                "name": "Templates/Telephony"
+            }
+        ],
+        "templates": [
+            {
+                "uuid": "7abcba9c12a04050b6ade42296d4df97",
+                "template": "AsteriskARI",
+                "name": "Asterisk RESTful API",
+                "description": "Asterisk ARI (RESTful API) template with discovery rule, panel, graphs and triggers.The template gets Asterisk metrics from ARI by HTTP agent.\nYou should enable the mini-HTTP Server, add the option enabled=yes in the [general] section of the http.conf file and option enabled=yes in the [general]\nsection of the ari.conf file, further create Asterisk ARI user with read only\npermissions within your Asterisk instance. Please, define {$ARI.PROTOCOL}, {$ARI.PREFIX}, {$ARI.PORT} used in the http.conf. Then you can define \n{$ARI.USERNAME} and {$ARI.SECRET} macros in the template for using on \nthe host http access. If there are errors, increase the logging to debug level and see the Zabbix server log. Item for single endpoint monitoring is disabled by default. Discovery rule set with macros.",
+                "groups": [
+                    {
+                        "name": "Templates/Telephony"
+                    }
+                ],
+                "items": [
+                    {
+                        "uuid": "fd6409e7f3064f09ba67d96aab14d2a2",
+                        "name": "Asterisk count channels",
+                        "type": "DEPENDENT",
+                        "key": "asterisk.channels.count",
+                        "delay": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.length()"
+                                ],
+                                "error_handler": "CUSTOM_VALUE",
+                                "error_handler_params": "0"
+                            }
+                        ],
+                        "master_item": {
+                            "key": "asterisk.channels.get"
+                        }
+                    },
+                    {
+                        "uuid": "c1e2172d16da4888a5a0a8550bee366e",
+                        "name": "Asterisk get channels",
+                        "type": "HTTP_AGENT",
+                        "key": "asterisk.channels.get",
+                        "history": "0",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "authtype": "BASIC",
+                        "username": "{$ARI.USERNAME}",
+                        "password": "{$ARI.SECRET}",
+                        "url": "{$ARI.PROTOCOL}{HOST.IP}:{$ARI.PORT}{$ARI.PREFIX}/channels"
+                    },
+                    {
+                        "uuid": "bfcc5194960f43318a65cbefe059f707",
+                        "name": "Asterisk get endpoints",
+                        "type": "HTTP_AGENT",
+                        "key": "asterisk.endpoints.get",
+                        "history": "0",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "authtype": "BASIC",
+                        "username": "{$ARI.USERNAME}",
+                        "password": "{$ARI.SECRET}",
+                        "url": "{$ARI.PROTOCOL}{HOST.IP}:{$ARI.PORT}{$ARI.PREFIX}/endpoints"
+                    },
+                    {
+                        "uuid": "33fad22028744cf282ac850fc7d6c82b",
+                        "name": "Endpoint {$ARI.TRUNK.TECH}[{$ARI.TRUNK}] channels count",
+                        "type": "HTTP_AGENT",
+                        "key": "asterisk.endpoints[{$ARI.TRUNK.TECH},{$ARI.TRUNK},channels]",
+                        "status": "DISABLED",
+                        "authtype": "BASIC",
+                        "username": "{$ARI.USERNAME}",
+                        "password": "{$ARI.SECRET}",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.channel_ids.length()"
+                                ],
+                                "error_handler": "CUSTOM_VALUE",
+                                "error_handler_params": "0"
+                            }
+                        ],
+                        "url": "{$ARI.PROTOCOL}{HOST.IP}:{$ARI.PORT}{$ARI.PREFIX}/endpoints/{$ARI.TRUNK.TECH}/{$ARI.TRUNK}"
+                    },
+                    {
+                        "uuid": "c8c3a92cd9aa4ae7a08877e1be50cea1",
+                        "name": "Endpoint {$ARI.TRUNK.TECH}[{$ARI.TRUNK}] status",
+                        "type": "HTTP_AGENT",
+                        "key": "asterisk.endpoints[{$ARI.TRUNK.TECH},{$ARI.TRUNK},status]",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "status": "DISABLED",
+                        "authtype": "BASIC",
+                        "username": "{$ARI.USERNAME}",
+                        "password": "{$ARI.SECRET}",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.state"
+                                ],
+                                "error_handler": "CUSTOM_VALUE",
+                                "error_handler_params": "unknown"
+                            }
+                        ],
+                        "url": "{$ARI.PROTOCOL}{HOST.IP}:{$ARI.PORT}{$ARI.PREFIX}/endpoints/{$ARI.TRUNK.TECH}/{$ARI.TRUNK}",
+                        "triggers": [
+                            {
+                                "uuid": "e12c09c1a6d94ae4a024a1e4bc0dd491",
+                                "expression": "last(/AsteriskARI/asterisk.endpoints[{$ARI.TRUNK.TECH},{$ARI.TRUNK},status],#4)<>\"online\"",
+                                "name": "Endpoint {$ARI.TRUNK.TECH}[{$ARI.TRUNK}] status Offline",
+                                "status": "DISABLED",
+                                "priority": "HIGH",
+                                "manual_close": "YES",
+                                "dependencies": [
+                                    {
+                                        "name": "Asterisk ARI (RESTful API)",
+                                        "expression": "last(/AsteriskARI/asterisk.ping,#2)<>\"pong\" or nodata(/AsteriskARI/asterisk.ping,90)=1"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "ba6e0796f82a4aa69d6c803cf8f0470e",
+                        "name": "Asterisk get Info",
+                        "type": "HTTP_AGENT",
+                        "key": "asterisk.info.get",
+                        "delay": "1h",
+                        "history": "0",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "authtype": "BASIC",
+                        "username": "{$ARI.USERNAME}",
+                        "password": "{$ARI.SECRET}",
+                        "url": "{$ARI.PROTOCOL}{HOST.IP}:{$ARI.PORT}{$ARI.PREFIX}/asterisk/info"
+                    },
+                    {
+                        "uuid": "a4fffc92ef9e43e0956f44fb7c066f00",
+                        "name": "Asterisk last reload time",
+                        "type": "DEPENDENT",
+                        "key": "asterisk.info.status.last_reload_time",
+                        "delay": "0",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.status.last_reload_time"
+                                ],
+                                "error_handler": "CUSTOM_ERROR",
+                                "error_handler_params": "unknown last reload"
+                            }
+                        ],
+                        "master_item": {
+                            "key": "asterisk.info.get"
+                        }
+                    },
+                    {
+                        "uuid": "0fcfcf52d9c3403098f2fbd07c86790b",
+                        "name": "Asterisk startup time",
+                        "type": "DEPENDENT",
+                        "key": "asterisk.info.status.startup_time",
+                        "delay": "0",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.status.startup_time"
+                                ],
+                                "error_handler": "CUSTOM_ERROR",
+                                "error_handler_params": "unknown startup time"
+                            }
+                        ],
+                        "master_item": {
+                            "key": "asterisk.info.get"
+                        }
+                    },
+                    {
+                        "uuid": "7695ed6fd8094d2a8d6b0a0df72fce9d",
+                        "name": "Asterisk Version",
+                        "type": "DEPENDENT",
+                        "key": "asterisk.info.version",
+                        "delay": "0",
+                        "history": "7d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.system.version"
+                                ],
+                                "error_handler": "CUSTOM_ERROR",
+                                "error_handler_params": "unknown version"
+                            }
+                        ],
+                        "master_item": {
+                            "key": "asterisk.info.get"
+                        }
+                    },
+                    {
+                        "uuid": "b19aa786dd2d4a909c771422db502358",
+                        "name": "Asterisk modules count",
+                        "type": "DEPENDENT",
+                        "key": "asterisk.modules.count",
+                        "delay": "0",
+                        "history": "7d",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.length()"
+                                ],
+                                "error_handler": "CUSTOM_ERROR",
+                                "error_handler_params": "modules count error"
+                            }
+                        ],
+                        "master_item": {
+                            "key": "asterisk.modules.get"
+                        }
+                    },
+                    {
+                        "uuid": "44aac034006a40e2bccf9b3821d6d79f",
+                        "name": "Asterisk get modules",
+                        "type": "HTTP_AGENT",
+                        "key": "asterisk.modules.get",
+                        "delay": "1h",
+                        "history": "0",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "authtype": "BASIC",
+                        "username": "{$ARI.USERNAME}",
+                        "password": "{$ARI.SECRET}",
+                        "url": "{$ARI.PROTOCOL}{HOST.IP}:{$ARI.PORT}{$ARI.PREFIX}/asterisk/modules"
+                    },
+                    {
+                        "uuid": "38a668f806a04c8ab55d08af81843b40",
+                        "name": "Asterisk list loaded modules",
+                        "type": "DEPENDENT",
+                        "key": "asterisk.modules.list",
+                        "delay": "0",
+                        "history": "7d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$..name"
+                                ],
+                                "error_handler": "CUSTOM_ERROR",
+                                "error_handler_params": "module list error"
+                            }
+                        ],
+                        "master_item": {
+                            "key": "asterisk.modules.get"
+                        }
+                    },
+                    {
+                        "uuid": "178837ab2a7642acb5b6fb9f764ac8df",
+                        "name": "Asterisk ARI RESTful API Ping",
+                        "type": "HTTP_AGENT",
+                        "key": "asterisk.ping",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "authtype": "BASIC",
+                        "username": "{$ARI.USERNAME}",
+                        "password": "{$ARI.SECRET}",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.ping"
+                                ],
+                                "error_handler": "CUSTOM_ERROR",
+                                "error_handler_params": "unknown"
+                            }
+                        ],
+                        "url": "{$ARI.PROTOCOL}{HOST.IP}:{$ARI.PORT}{$ARI.PREFIX}/asterisk/ping",
+                        "tags": [
+                            {
+                                "tag": "ari",
+                                "value": "pong"
+                            }
+                        ],
+                        "triggers": [
+                            {
+                                "uuid": "55fafb3c74454b1081602b35d8e091e0",
+                                "expression": "last(/AsteriskARI/asterisk.ping,#2)<>\"pong\" or nodata(/AsteriskARI/asterisk.ping,90)=1",
+                                "name": "Asterisk ARI (RESTful API)",
+                                "opdata": "offline",
+                                "priority": "DISASTER",
+                                "manual_close": "YES",
+                                "dependencies": [
+                                    {
+                                        "name": "Asterisk Host",
+                                        "expression": "last(/AsteriskARI/icmpping[],#2)<>1"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "b0324adc88b94f95aeaefd4511084682",
+                        "name": "Asterisk Host",
+                        "type": "SIMPLE",
+                        "key": "icmpping[]",
+                        "delay": "30",
+                        "valuemap": {
+                            "name": "Asterisk Host"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "40e16545edf540ac85587a215fe3cb5b",
+                                "expression": "last(/AsteriskARI/icmpping[],#2)<>1",
+                                "name": "Asterisk Host",
+                                "opdata": "offline",
+                                "priority": "DISASTER",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    }
+                ],
+                "discovery_rules": [
+                    {
+                        "uuid": "5e6cad6f360747d990f7980ac4ec8fa2",
+                        "name": "Asterisk Endpoints discovery",
+                        "type": "DEPENDENT",
+                        "key": "asterisk.endpoint.discovery",
+                        "delay": "0",
+                        "filter": {
+                            "conditions": [
+                                {
+                                    "macro": "{#RESOURCE}",
+                                    "value": "({$ARI.REGEX.TRUNK})",
+                                    "formulaid": "A"
+                                },
+                                {
+                                    "macro": "{#TECHNOLOGY}",
+                                    "value": "({$ARI.REGEX.TRUNK.TECH})",
+                                    "formulaid": "B"
+                                }
+                            ]
+                        },
+                        "lifetime_type": "DELETE_IMMEDIATELY",
+                        "lifetime": "0",
+                        "item_prototypes": [
+                            {
+                                "uuid": "11478118e96f4885bb8b6b36f6adf603",
+                                "name": "Endpoint {#TECHNOLOGY}[{#RESOURCE}] count channels",
+                                "type": "DEPENDENT",
+                                "key": "asterisk.endpoints[{#TECHNOLOGY},{#RESOURCE},channels]",
+                                "delay": "0",
+                                "units": "ch",
+                                "preprocessing": [
+                                    {
+                                        "type": "JSONPATH",
+                                        "parameters": [
+                                            "$.[?((@.resource=='{#RESOURCE}') && (@.technology=='{#TECHNOLOGY}'))].channel_ids.first().length()"
+                                        ],
+                                        "error_handler": "CUSTOM_VALUE",
+                                        "error_handler_params": "0"
+                                    }
+                                ],
+                                "master_item": {
+                                    "key": "asterisk.endpoints.get"
+                                }
+                            },
+                            {
+                                "uuid": "e45c0d85e9af421f874f61778b7c8dc5",
+                                "name": "Endpoint {#TECHNOLOGY}[{#RESOURCE}] State",
+                                "type": "DEPENDENT",
+                                "key": "asterisk.endpoints[{#TECHNOLOGY},{#RESOURCE},state]",
+                                "delay": "0",
+                                "value_type": "TEXT",
+                                "trends": "0",
+                                "preprocessing": [
+                                    {
+                                        "type": "JSONPATH",
+                                        "parameters": [
+                                            "$.[?((@.resource=='{#RESOURCE}') && (@.technology=='{#TECHNOLOGY}'))].state.first()"
+                                        ],
+                                        "error_handler": "CUSTOM_ERROR",
+                                        "error_handler_params": "ERROR PROTOTYPE STATE"
+                                    }
+                                ],
+                                "master_item": {
+                                    "key": "asterisk.endpoints.get"
+                                },
+                                "tags": [
+                                    {
+                                        "tag": "endpoint",
+                                        "value": "{#TECHNOLOGY}[{#RESOURCE}]"
+                                    },
+                                    {
+                                        "tag": "state",
+                                        "value": "{#STATE}"
+                                    }
+                                ],
+                                "trigger_prototypes": [
+                                    {
+                                        "uuid": "678d55fba6da41b98586437b727d7570",
+                                        "expression": "last(/AsteriskARI/asterisk.endpoints[{#TECHNOLOGY},{#RESOURCE},state],#4)<>\"online\"",
+                                        "name": "Endpoint {#TECHNOLOGY}[{#RESOURCE}]",
+                                        "priority": "HIGH",
+                                        "manual_close": "YES",
+                                        "dependencies": [
+                                            {
+                                                "name": "Asterisk ARI (RESTful API)",
+                                                "expression": "last(/AsteriskARI/asterisk.ping,#2)<>\"pong\" or nodata(/AsteriskARI/asterisk.ping,90)=1"
+                                            }
+                                        ],
+                                        "tags": [
+                                            {
+                                                "tag": "endpoint",
+                                                "value": "{#TECHNOLOGY}[{#RESOURCE}]"
+                                            },
+                                            {
+                                                "tag": "state",
+                                                "value": "{#STATE}"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "uuid": "5e2a87d3d2be4fe58f6da44791fc31d9",
+                                "name": "Endpoints {#TECHNOLOGY} Count",
+                                "type": "DEPENDENT",
+                                "key": "asterisk.endpoints[{#TECHNOLOGY}]",
+                                "delay": "0",
+                                "trends": "0",
+                                "preprocessing": [
+                                    {
+                                        "type": "JSONPATH",
+                                        "parameters": [
+                                            "$.[?(@.technology=='{#TECHNOLOGY}')].length()"
+                                        ],
+                                        "error_handler": "CUSTOM_ERROR",
+                                        "error_handler_params": "ERROR COUNT TECHNOLOGY"
+                                    }
+                                ],
+                                "master_item": {
+                                    "key": "asterisk.endpoints.get"
+                                }
+                            }
+                        ],
+                        "graph_prototypes": [
+                            {
+                                "uuid": "74a9259263944e54a0851e4ba33f7723",
+                                "name": "{#TECHNOLOGY}[{#RESOURCE}] USE CHANNELS",
+                                "show_work_period": "NO",
+                                "show_triggers": "NO",
+                                "show_legend": "NO",
+                                "graph_items": [
+                                    {
+                                        "drawtype": "BOLD_LINE",
+                                        "color": "0040FF",
+                                        "yaxisside": "RIGHT",
+                                        "calc_fnc": "MAX",
+                                        "item": {
+                                            "host": "AsteriskARI",
+                                            "key": "asterisk.endpoints[{#TECHNOLOGY},{#RESOURCE},channels]"
+                                        }
+                                    }
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "asterisk.endpoints.get"
+                        },
+                        "lld_macro_paths": [
+                            {
+                                "lld_macro": "{#CHANNELS}",
+                                "path": "$.channel_ids"
+                            },
+                            {
+                                "lld_macro": "{#RESOURCE}",
+                                "path": "$.resource"
+                            },
+                            {
+                                "lld_macro": "{#STATE}",
+                                "path": "$.state"
+                            },
+                            {
+                                "lld_macro": "{#TECHNOLOGY}",
+                                "path": "$.technology"
+                            }
+                        ]
+                    }
+                ],
+                "tags": [
+                    {
+                        "tag": "class",
+                        "value": "voip"
+                    },
+                    {
+                        "tag": "protocol",
+                        "value": "ari"
+                    },
+                    {
+                        "tag": "target",
+                        "value": "asterisk"
+                    }
+                ],
+                "macros": [
+                    {
+                        "macro": "{$ARI.PORT}",
+                        "value": "8088",
+                        "description": "Asterisk ARI port number (from http.conf)."
+                    },
+                    {
+                        "macro": "{$ARI.PREFIX}",
+                        "value": "/ari",
+                        "description": "Asterisk ARI (RESTful API) prefix (from http.conf)."
+                    },
+                    {
+                        "macro": "{$ARI.PROTOCOL}",
+                        "value": "http://",
+                        "description": "Asterisk ARI use protocol (from http.conf, http or https)."
+                    },
+                    {
+                        "macro": "{$ARI.REGEX.TRUNK}",
+                        "value": "trunk|gate",
+                        "description": "The regexp for the identification of trunk peers (for discovery filter rule, or use '.+' - for any)."
+                    },
+                    {
+                        "macro": "{$ARI.REGEX.TRUNK.TECH}",
+                        "value": "PJSIP",
+                        "description": "The regexp for the technology of trunk peers (for discovery filtr rule, or use '.+' - for any)."
+                    },
+                    {
+                        "macro": "{$ARI.SECRET}",
+                        "value": "aripassword",
+                        "description": "The Asterisk ARI user password (from ari.conf)."
+                    },
+                    {
+                        "macro": "{$ARI.TRUNK}",
+                        "value": "trunk1",
+                        "description": "Single name of the trunk for monitoring (default: disabled and NOT regexp)"
+                    },
+                    {
+                        "macro": "{$ARI.TRUNK.TECH}",
+                        "value": "pjsip",
+                        "description": "Technology of the trunk for monitoring (default: disabled and NOT regexp)"
+                    },
+                    {
+                        "macro": "{$ARI.USERNAME}",
+                        "value": "ariusername",
+                        "description": "The Asterisk ARI user name (from ari.conf)."
+                    }
+                ],
+                "dashboards": [
+                    {
+                        "uuid": "8a74c59d349f45459b9ad82efbb2f4cd",
+                        "name": "Panel Asterisk",
+                        "display_period": "60",
+                        "pages": [
+                            {
+                                "name": "Default",
+                                "widgets": [
+                                    {
+                                        "type": "item",
+                                        "name": "Version",
+                                        "width": "15",
+                                        "height": "3",
+                                        "fields": [
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "decimal_places",
+                                                "value": "0"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "decimal_size",
+                                                "value": "100"
+                                            },
+                                            {
+                                                "type": "ITEM",
+                                                "name": "itemid.0",
+                                                "value": {
+                                                    "host": "AsteriskARI",
+                                                    "key": "asterisk.info.version"
+                                                }
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "rf_rate",
+                                                "value": "900"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "show.0",
+                                                "value": "2"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "units_bold",
+                                                "value": "0"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "units_show",
+                                                "value": "0"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "value_size",
+                                                "value": "20"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "itemhistory",
+                                        "name": "Channels",
+                                        "y": "3",
+                                        "width": "72",
+                                        "fields": [
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "columns.0.display",
+                                                "value": "3"
+                                            },
+                                            {
+                                                "type": "ITEM",
+                                                "name": "columns.0.itemid",
+                                                "value": {
+                                                    "host": "AsteriskARI",
+                                                    "key": "asterisk.channels.count"
+                                                }
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "columns.0.max",
+                                                "value": "100"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "columns.0.min",
+                                                "value": "0"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "columns.0.name",
+                                                "value": "All channels"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "columns.0.thresholds.0.color",
+                                                "value": "FFBF00"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "columns.0.thresholds.0.threshold",
+                                                "value": "55"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "columns.0.thresholds.1.color",
+                                                "value": "FF8000"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "columns.0.thresholds.1.threshold",
+                                                "value": "70"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "columns.0.thresholds.2.color",
+                                                "value": "FF465C"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "columns.0.thresholds.2.threshold",
+                                                "value": "85"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "reference",
+                                                "value": "WIOUB"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "show_column_header",
+                                                "value": "1"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "show_lines",
+                                                "value": "1"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "show_timestamp",
+                                                "value": "1"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "graphprototype",
+                                        "name": "Channels per trunk",
+                                        "y": "5",
+                                        "width": "72",
+                                        "height": "9",
+                                        "fields": [
+                                            {
+                                                "type": "GRAPH_PROTOTYPE",
+                                                "name": "graphid.0",
+                                                "value": {
+                                                    "host": "AsteriskARI",
+                                                    "name": "{#TECHNOLOGY}[{#RESOURCE}] USE CHANNELS"
+                                                }
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "reference",
+                                                "value": "GTAVN"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "rows",
+                                                "value": "3"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "time_period._reference",
+                                                "value": "SPEFO._timeperiod"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "problems",
+                                        "name": "Endpoints Offline",
+                                        "y": "14",
+                                        "width": "72",
+                                        "height": "5",
+                                        "fields": [
+                                            {
+                                                "type": "STRING",
+                                                "name": "reference",
+                                                "value": "XRNDR"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "show",
+                                                "value": "3"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "show_lines",
+                                                "value": "10"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "show_tags",
+                                                "value": "3"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "tags.0.operator",
+                                                "value": "3"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "tags.0.tag",
+                                                "value": "ari"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "tags.0.value",
+                                                "value": "online"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "tags.1.operator",
+                                                "value": "3"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "tags.1.tag",
+                                                "value": "state"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "tags.1.value",
+                                                "value": "online"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "tag_name_format",
+                                                "value": "2"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "tag_priority",
+                                                "value": "ari,endpoint,state"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "item",
+                                        "name": "All Channels",
+                                        "x": "15",
+                                        "width": "12",
+                                        "height": "3",
+                                        "fields": [
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "decimal_places",
+                                                "value": "0"
+                                            },
+                                            {
+                                                "type": "ITEM",
+                                                "name": "itemid.0",
+                                                "value": {
+                                                    "host": "AsteriskARI",
+                                                    "key": "asterisk.channels.count"
+                                                }
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "show.0",
+                                                "value": "2"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "show.1",
+                                                "value": "4"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "units",
+                                                "value": "ch"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "value_size",
+                                                "value": "50"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "svggraph",
+                                        "name": "Channels Graph",
+                                        "x": "27",
+                                        "width": "45",
+                                        "height": "3",
+                                        "fields": [
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "axisx",
+                                                "value": "0"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "ds.0.color",
+                                                "value": "FF465C"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "ds.0.items.0",
+                                                "value": "Asterisk count channels"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "ds.0.type",
+                                                "value": "3"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "reference",
+                                                "value": "SPEFO"
+                                            },
+                                            {
+                                                "type": "INTEGER",
+                                                "name": "righty",
+                                                "value": "0"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "time_period.from",
+                                                "value": "now-1h"
+                                            },
+                                            {
+                                                "type": "STRING",
+                                                "name": "time_period.to",
+                                                "value": "now"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "valuemaps": [
+                    {
+                        "uuid": "9c2b1b2c1cc6457291ad0b6e46239208",
+                        "name": "Asterisk Host",
+                        "mappings": [
+                            {
+                                "value": "1",
+                                "newvalue": "online"
+                            },
+                            {
+                                "value": "0",
+                                "newvalue": "offline"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "graphs": [
+            {
+                "uuid": "5d33f88d2698409a9e5d89726a1037a8",
+                "name": "Asterisk use channels",
+                "show_triggers": "NO",
+                "show_legend": "NO",
+                "graph_items": [
+                    {
+                        "drawtype": "FILLED_REGION",
+                        "color": "199C0D",
+                        "yaxisside": "RIGHT",
+                        "calc_fnc": "MAX",
+                        "item": {
+                            "host": "AsteriskARI",
+                            "key": "asterisk.channels.count"
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+}
